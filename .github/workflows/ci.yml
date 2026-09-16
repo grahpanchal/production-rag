@@ -14,6 +14,12 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    services:
+      qdrant:
+        image: qdrant/qdrant:latest
+        ports:
+          - 6333:6333
+
     defaults:
       run:
         working-directory: backend
