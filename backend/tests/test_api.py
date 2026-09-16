@@ -1,16 +1,22 @@
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
 from app.config import settings
 
-client = TestClient(app)
+
+@pytest.fixture
+def client():
+    with TestClient(app) as test_client:
+        yield test_client
+
 
 AUTH_HEADERS = {
     "X-API-Key": settings.api_key,
 }
 
 
-def test_root():
+def test_root(client):
     response = client.get("/")
 
     assert response.status_code == 200
@@ -20,7 +26,7 @@ def test_root():
     assert data["message"] == "Production RAG API is running"
 
 
-def test_search_requires_query():
+def test_search_requires_query(client):
     response = client.get(
         "/search",
         headers=AUTH_HEADERS,
@@ -29,7 +35,7 @@ def test_search_requires_query():
     assert response.status_code == 422
 
 
-def test_search_rejects_empty_query():
+def test_search_rejects_empty_query(client):
     response = client.get(
         "/search",
         params={"query": ""},
@@ -39,7 +45,7 @@ def test_search_rejects_empty_query():
     assert response.status_code == 422
 
 
-def test_search_rejects_invalid_top_k():
+def test_search_rejects_invalid_top_k(client):
     response = client.get(
         "/search",
         params={
@@ -52,7 +58,7 @@ def test_search_rejects_invalid_top_k():
     assert response.status_code == 422
 
 
-def test_search_rejects_top_k_above_limit():
+def test_search_rejects_top_k_above_limit(client):
     response = client.get(
         "/search",
         params={
@@ -65,7 +71,7 @@ def test_search_rejects_top_k_above_limit():
     assert response.status_code == 422
 
 
-def test_chat_requires_query():
+def test_chat_requires_query(client):
     response = client.get(
         "/chat",
         headers=AUTH_HEADERS,
@@ -74,7 +80,7 @@ def test_chat_requires_query():
     assert response.status_code == 422
 
 
-def test_chat_rejects_empty_query():
+def test_chat_rejects_empty_query(client):
     response = client.get(
         "/chat",
         params={"query": ""},
@@ -84,7 +90,7 @@ def test_chat_rejects_empty_query():
     assert response.status_code == 422
 
 
-def test_chat_rejects_invalid_top_k():
+def test_chat_rejects_invalid_top_k(client):
     response = client.get(
         "/chat",
         params={
@@ -97,7 +103,7 @@ def test_chat_rejects_invalid_top_k():
     assert response.status_code == 422
 
 
-def test_chat_rejects_top_k_above_limit():
+def test_chat_rejects_top_k_above_limit(client):
     response = client.get(
         "/chat",
         params={
@@ -110,7 +116,7 @@ def test_chat_rejects_top_k_above_limit():
     assert response.status_code == 422
 
 
-def test_upload_rejects_non_pdf():
+def test_upload_rejects_non_pdf(client):
     response = client.post(
         "/documents/upload",
         files={
@@ -130,7 +136,7 @@ def test_upload_rejects_non_pdf():
     assert data["detail"] == "Only PDF files are supported"
 
 
-def test_delete_nonexistent_document():
+def test_delete_nonexistent_document(client):
     fake_file_id = "00000000-0000-0000-0000-000000000000"
 
     response = client.delete(
@@ -145,7 +151,7 @@ def test_delete_nonexistent_document():
     assert data["detail"] == "Document not found"
 
 
-def test_search_rejects_missing_api_key():
+def test_search_rejects_missing_api_key(client):
     response = client.get(
         "/search",
         params={
@@ -160,7 +166,7 @@ def test_search_rejects_missing_api_key():
     assert data["detail"] == "Invalid or missing API key"
 
 
-def test_search_rejects_invalid_api_key():
+def test_search_rejects_invalid_api_key(client):
     response = client.get(
         "/search",
         params={
@@ -178,7 +184,7 @@ def test_search_rejects_invalid_api_key():
     assert data["detail"] == "Invalid or missing API key"
 
 
-def test_search_accepts_valid_api_key():
+def test_search_accepts_valid_api_key(client):
     response = client.get(
         "/search",
         params={
@@ -190,21 +196,21 @@ def test_search_accepts_valid_api_key():
     assert response.status_code == 200
 
 
-def test_security_header_content_type_options():
+def test_security_header_content_type_options(client):
     response = client.get("/")
 
     assert response.status_code == 200
     assert response.headers["X-Content-Type-Options"] == "nosniff"
 
 
-def test_security_header_frame_options():
+def test_security_header_frame_options(client):
     response = client.get("/")
 
     assert response.status_code == 200
     assert response.headers["X-Frame-Options"] == "DENY"
 
 
-def test_security_header_referrer_policy():
+def test_security_header_referrer_policy(client):
     response = client.get("/")
 
     assert response.status_code == 200
